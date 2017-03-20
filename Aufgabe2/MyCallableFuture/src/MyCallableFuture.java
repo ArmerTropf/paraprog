@@ -9,10 +9,8 @@ public class MyCallableFuture {
 		
 		ExecutorService myExCached = Executors.newCachedThreadPool();
 		
-		
 		Thread RunnTh1 = new Thread(new MyRunnable(3, "RunnTh1"));
 		Thread RunnTh2 = new Thread(new MyRunnable(5, "RunnTh2"));
-		
 		
 		try 
 		{
