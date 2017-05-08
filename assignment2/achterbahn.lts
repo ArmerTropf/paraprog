@@ -1,0 +1,6 @@
+const M = 4
+Steuerung(B=0) = Wagen[B],
+Wagen[i:0..M] = (when (i < M) passagier -> Wagen[i+1] 
+| when (i == M) abfahrt -> fahrtbeendet -> aussteigen -> Wagen[0]).
+Drehkreuz = (passagier -> Drehkreuz).
+||Achterbahn = (Steuerung(0) || Drehkreuz).
