@@ -1,6 +1,11 @@
-const M = 4
-Steuerung(B=0) = Wagen[B],
-Wagen[i:0..M] = (when (i < M) passagier -> Wagen[i+1] 
-| when (i == M) abfahrt -> fahrtbeendet -> aussteigen -> Wagen[0]).
+Steuerung(M=6) = FreieSitzplaetze[M],
+
+FreieSitzplaetze[i:0..M] = (
+  when (i > 0) passagier -> FreieSitzplaetze[i-1] 
+| when (i == 0) abfahrt -> aussteigen -> FreieSitzplaetze[M]
+).
+
+Wagen = (abfahrt -> faehrt -> aussteigen -> Wagen).
 Drehkreuz = (passagier -> Drehkreuz).
-||Achterbahn = (Steuerung(0) || Drehkreuz).
+
+||Achterbahn = (Steuerung(6) || Drehkreuz || Wagen).
