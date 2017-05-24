@@ -1,0 +1,14 @@
+const M = 5 						// Kapazitaet des Bueffets
+set K = {a, b, c} 					// Menge der Kannibalen
+
+Bueffet(M=5) = Auslage[5],
+
+Auslage[i:0..M] = (	when (i==0) fuelleBueffet -> Auslage[M]
+					| 	when (i>0) K.gehEssen -> Auslage[i-1] ).
+
+
+
+Kannibale = (gehEssen -> binZufrieden -> Kannibale).
+Koch = (koche -> fuelleBueffet -> Koch).
+
+||DasBueffet = (Koch || Bueffet(M) || K:Kannibale).
