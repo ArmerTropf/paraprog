@@ -1,0 +1,11 @@
+set K = {a, b, c}
+
+Konto(M=10) = Konto[10],
+Konto[i:0..M] = ( 
+  when (i >= 1) K.abheben-> Konto[i-1] |
+  when (i < M) K.einzahlen -> Konto[i+1] 
+).
+ 
+Person = ( abheben -> Person | einzahlen -> Person).
+
+||GO = (Konto(10) || K:Person).

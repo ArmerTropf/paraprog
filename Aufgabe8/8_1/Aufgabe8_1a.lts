@@ -1,0 +1,13 @@
+Labyrinth(Start=8) = Feld[Start],
+Feld[0] = (norden -> STOP | osten -> Feld[1]),
+Feld[1] = (westen -> Feld[0] | sueden -> Feld[4] | osten -> Feld[2]),
+Feld[2] = (westen -> Feld[1] | sueden -> Feld[5] ),
+Feld[3] = (osten -> Feld[4] | sueden -> Feld[6] ),
+Feld[4] = (norden -> Feld[1] | westen -> Feld[3] ),
+Feld[5] = (norden -> Feld[2] | sueden -> Feld[8] ),
+Feld[6] = (norden -> Feld[3] ),
+Feld[7] = (osten -> Feld[8] ),
+Feld[8] = (norden -> Feld[5] | westen -> Feld[7]).
+
+
+||Suche = ( Labyrinth(7) ).
