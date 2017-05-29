@@ -1,3 +1,5 @@
+import jdk.nashorn.internal.runtime.ECMAException;
+
 /**
  * Created by mguenster on 29.05.17.
  */
@@ -26,21 +28,19 @@ public class Person extends Thread {
             if ((random % 2 ) == 0  ) {
 
 
-            try {
-                this.konto.abheben(betrag);
-                System.out.println(this.currentThread().getName() +   " hebt " + betrag  + " ab");
-                System.out.println("Aktueller Kontostand: " + this.konto.getBetrag() );
-            }catch (Exception e) {
-                System.out.println(Thread.currentThread().getName() + ": Kein Geld da, gehe wieder nach Hause");
-            }
+                try {
+                    this.konto.abheben(betrag);
+
+                }catch (Exception e) {
+                    System.out.println(Thread.currentThread().getName() + ": Kein Geld da, gehe wieder nach Hause");
+                }
 
 
             }
             else {
 
                 this.konto.einzahlen(betrag);
-                System.out.println(this.currentThread().getName() +   " zahlt " + betrag  + " ein");
-                System.out.println("Aktueller Kontostand: " + this.konto.getBetrag() );
+
             }
 
 
