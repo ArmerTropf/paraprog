@@ -11,7 +11,7 @@ package aufgabe10a;
 public class Aufgabe10a {
     public static void main(String [] args) {
 
-        Monitor monitor = new Monitor();
+        /*Monitor monitor = new Monitor();
 
         TheThread thread1 = new TheThread(monitor , "thread1");
         TheThread thread2 = new TheThread(monitor , "thread2");
@@ -46,7 +46,13 @@ public class Aufgabe10a {
 
         System.out.println("Thread1: Anzahl Aufrufe " + thread1.zaehler);
         System.out.println("Thread2: Anzahl Aufrufe " + thread2.zaehler);
-        System.out.println("Thread3: Anzahl Aufrufe " + thread3.zaehler);
+        System.out.println("Thread3: Anzahl Aufrufe " + thread3.zaehler);*/
+
+
+
+        // Locks einzeln setzten
+        RessourceLock lock = new RessourceLock();
+        lock.startThreads();
 
 
     }
