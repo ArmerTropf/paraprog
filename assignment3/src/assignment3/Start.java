@@ -7,7 +7,7 @@ public class Start {
 	public static void main(String [] args) throws InterruptedException {
 				
 		
-		CyclicBarrier cb = new CyclicBarrier(4);
+		CyclicBarrier cb = new CyclicBarrier(6);
 		
 		TheNode myNode1 = new TheNode("1", true, cb );
 		TheNode myNode2 = new TheNode("2", false, cb );
@@ -19,11 +19,11 @@ public class Start {
 		
 			
 		myNode1.setupNeighbours(myNode2,myNode3);
-		myNode2.setupNeighbours(myNode1);
+//		myNode2.setupNeighbours(myNode1);
 		myNode3.setupNeighbours(myNode1,myNode4);
 		myNode4.setupNeighbours(myNode3,myNode5,myNode6);
-		myNode5.setupNeighbours(myNode4);
-		myNode6.setupNeighbours(myNode4);
+//		myNode5.setupNeighbours(myNode4);
+//		myNode6.setupNeighbours(myNode4);
 		
 		
 		myNode1.start();
@@ -40,13 +40,13 @@ public class Start {
 		myNode5.join();
 		myNode6.join();
 		 
-		myNode1.showNeigbours();
-		myNode2.showNeigbours();
-		myNode3.showNeigbours();
-		myNode4.showNeigbours();
-		myNode5.showNeigbours();
-		myNode6.showNeigbours();
-		
+//		myNode1.showNeigbours();
+//		myNode2.showNeigbours();
+//		myNode3.showNeigbours();
+//		myNode4.showNeigbours();
+//		myNode5.showNeigbours();
+//		myNode6.showNeigbours();
+//		
 
 			
 		
