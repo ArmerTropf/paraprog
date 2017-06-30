@@ -26,7 +26,7 @@ public class Start {
 		 * 
 		 */	
 //		myNode1.setupNeighbours(myNode2,myNode3,myNode4);
-//		myNode2.setupNeighbours(myNode3,myNode4); 
+//		myNode2.setupNeighbours(myNode3,myNode4);
 //		myNode3.setupNeighbours(myNode4);
 //		myNode4.setupNeighbours();
 //		myNode5.setupNeighbours();
@@ -40,12 +40,12 @@ public class Start {
 		 * 4---3
 		 * 
 		 */
-//		myNode1.setupNeighbours(myNode2);
-//		myNode2.setupNeighbours(myNode3); 
-//		myNode3.setupNeighbours(myNode4);
-//		myNode4.setupNeighbours(myNode1);
-//		myNode5.setupNeighbours();
-//		myNode6.setupNeighbours();
+		myNode1.setupNeighbours(myNode2);
+		myNode2.setupNeighbours(myNode3);
+		myNode3.setupNeighbours(myNode4);
+		myNode4.setupNeighbours(myNode1);
+		myNode5.setupNeighbours();
+		myNode6.setupNeighbours();
 		
 		/*
 		 * Schlinge
@@ -54,13 +54,15 @@ public class Start {
 		 * |_|
 		 * 
 		 */
-		myNode1.setupNeighbours(myNode1,myNode2);
-		myNode2.setupNeighbours(); 
-		myNode3.setupNeighbours();
-		myNode4.setupNeighbours();
-		myNode5.setupNeighbours();
-		myNode6.setupNeighbours();
+//		myNode1.setupNeighbours(myNode1,myNode2);
+//		myNode2.setupNeighbours();
+//		myNode3.setupNeighbours();
+//		myNode4.setupNeighbours();
+//		myNode5.setupNeighbours();
+//		myNode6.setupNeighbours();
 
+		
+		
 		/*
 		 * Baum
 		 * 
@@ -70,7 +72,7 @@ public class Start {
 		 *
 		 */	 
 //		myNode1.setupNeighbours(myNode2,myNode3);
-//		myNode2.setupNeighbours(); 
+//		myNode2.setupNeighbours();
 //		myNode3.setupNeighbours(myNode4);
 //		myNode4.setupNeighbours(myNode5,myNode6);
 //		myNode5.setupNeighbours(myNode4);

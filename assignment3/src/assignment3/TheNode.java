@@ -16,31 +16,41 @@ public class TheNode extends NodeAbstract {
 	private int echoReceived = 0;
 	private boolean isSleeping = true;
 
-	private boolean isWritingEchoReceived = false;
+//	private boolean isWritingEchoReceived = false;
 
 
 /*
  * Monitore
  */
+//	public synchronized void writeEcho(Node caller, Object text) {
+//
+//		while (isWritingEchoReceived) {
+//			System.out.println("Jemand schreibt gerade echo");
+//
+//			try {
+//				wait();
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
+//		System.out.println("Echo von: " + caller.toString() + " an: " + toString());
+//		isWritingEchoReceived = true;
+//		echoReceived++;
+//		isWritingEchoReceived = false;
+//		notify();
+//
+//	}
 	public synchronized void writeEcho(Node caller, Object text) {
-
-		while (isWritingEchoReceived) {
-			System.out.println("Jemand schreibt gerade echo");
-
-			try {
-				wait();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		System.out.println("Echo von: " + caller.toString() + " an: " + toString());
-		isWritingEchoReceived = true;
 		echoReceived++;
-		isWritingEchoReceived = false;
-		notify();
-
+		if (!initiator) {
+			System.out.println("Thread: " + getName() + " Setze echoReceived++ ; hat nun " + echoReceived + "/" + (neighbours.size()-1));
+		} else {
+			System.out.println("Thread: " + getName() + " Setze echoReceived++ ; hat nun " + echoReceived + "/" + (neighbours.size()));
+		}
+		
 	}
+	
 
 	public synchronized boolean readSleeping() {
 		return isSleeping;
@@ -55,8 +65,12 @@ public class TheNode extends NodeAbstract {
 	}
 
 	public synchronized void writeSingleEchoReceived() {
-		System.out.println("Thread: " + getName() + " war schon wach." );
 		echoReceived++;
+		System.out.println("Thread: " + getName() + " war schon wach. Setze echoReceived++ ; hat nun " + echoReceived + "/" + (neighbours.size()-1));		
+		if(echoReceived == neighbours.size() ) {
+//			checkEcho();
+		}
+		checkEcho();
 	}
 	
 	public synchronized void writeIsDone(boolean status) {
@@ -93,25 +107,26 @@ public class TheNode extends NodeAbstract {
 	@Override
 	public void wakeup(Node neighbour) {
 		
+		//Wenn er Schlaeft, auf
 		if (readSleeping()) {
 			writeWakeUpFrom(neighbour);//wakeUpFrom = neighbour;
 			writeSleeping(false); //;isSleeping = false;
-			checkEcho();
+//			checkEcho();
 
 		} 
 		// Wenn Knoten wach, nur echoReceived++
 		else {
 			
 			writeSingleEchoReceived();
-			checkEcho();
+//			checkEcho();
 		}
 		
 	}
 
 	@Override
-	public void echo(Node neighbour, Object data) {
-		notifyEchoReceived();
+	public void echo(Node neighbour, Object data) {	
 		writeEcho(neighbour, data);
+		checkEcho();
 	}
 
 	@Override
@@ -141,14 +156,13 @@ public class TheNode extends NodeAbstract {
 
 				if (!readSleeping()) {
 					checkWakeUp();
-//					checkEcho();
 				}
 
 			}
 
 		}
 
-//		System.out.println("Thread Done: " + toString());
+		System.out.println("Thread: " + toString() + " TERMINATED");
 
 	}
 
@@ -170,8 +184,8 @@ public class TheNode extends NodeAbstract {
 	}
 
 	private synchronized void checkEcho() {
+//		System.out.println("CHECK: Thread: " + getName() + " init: " + initiator + " echoReceived: " + readEchoReceived() + " neghbours - 1: " + (neighbours.size() -1));
 		if ((initiator == false) && (readEchoReceived() == neighbours.size() - 1)) {
-			
 			if (neighbours.size() - 1 == 0 ) {
 				System.out.println("Thread: " + getName() + " ohne Nachbarn. Benachrichtige " + readWakeUpFrom().toString());
 			} else {
@@ -181,13 +195,14 @@ public class TheNode extends NodeAbstract {
 			readWakeUpFrom().echo(this, "fertig");//wakeUpFrom.echo(this, "fertig");
 			writeIsDone(true); //isDone = true;
 			writeSleeping(true);
+			System.out.println("Thread: " + getName() + " STATE: " + this.getState());
 			
 
 		} else if (initiator && readEchoReceived() != neighbours.size()) {
 			waitForEchoFromNeighbour();
 			
-			writeIsDone(true); //isDone = true;
-			writeSleeping(true);
+//			writeIsDone(true); //isDone = true;
+//			writeSleeping(true);
 		}
 			
 	}
@@ -228,26 +243,26 @@ public class TheNode extends NodeAbstract {
 	}
 	
 	
-	private void waitForEchoFromNeighbour() {
-		synchronized (this) {
+	private synchronized void waitForEchoFromNeighbour() {
+		
 			try {
 				if (!initiator) {
-					System.out.println("Thread: " + getName() + " warte auf Echo " + echoReceived + "/" + (neighbours.size()-1) + " ...wait()");	
+					System.out.println("Thread: " + getName() + " hat " + echoReceived + "/" + (neighbours.size()-1) + " Echos bekommen ...wait()");	
 				} else {
 					System.out.println("Thread: " + getName() + " INITIATOR warte auf Echo " + echoReceived + "/" + (neighbours.size()) + " ...wait()");
 				}
 				
-				wait();
+				this.wait();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			//checkEcho();
-		}
+			checkEcho();
+		
 	}
 	
 	
-	private synchronized void notifyEchoReceived() {
+	public synchronized void notifyEchoReceived() {
 		notifyAll();
 	}
 
