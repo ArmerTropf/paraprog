@@ -7,15 +7,54 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class TheNode extends NodeAbstract {
 
-	public AtomicInteger echoReceived = new AtomicInteger(0);
-	public AtomicBoolean isSleeping = new AtomicBoolean(true);
-	public boolean wokenUpNeighbours = false;
-	public Node wakeUpFrom = null;
-	public boolean isDone = false;
+	// private AtomicInteger echoReceived = new AtomicInteger(0);
+	// private AtomicBoolean isSleeping = new AtomicBoolean(true);
+	private boolean wokenUpNeighbours = false;
+	private Node wakeUpFrom = null;
+	private boolean isDone = false;
 
+	private int echoReceived = 0;
+	private boolean isSleeping = true;
+
+	private boolean isWritingEchoReceived = false;
+
+
+/*
+ * Monitore
+ */
+	public synchronized void writeEcho(Node caller, Object text) {
+
+		while (isWritingEchoReceived) {
+			System.out.println("Jemand schreibt gerade echo");
+
+			try {
+				wait();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		System.out.println("Echo von: " + caller.toString() + " an: " + toString());
+		isWritingEchoReceived = true;
+		echoReceived++;
+		isWritingEchoReceived = false;
+		notify();
+
+	}
+
+	public synchronized boolean readSleeping() {
+		return isSleeping;
+	}
+
+	public synchronized void writeSingleEchoReceived() {
+		echoReceived++;
+	}
+
+	// Ende Monitore
+	//--------------
+	
 	public TheNode(String name, boolean initiator, CyclicBarrier barrier) {
 		super(name, initiator, barrier);
-		System.out.println("barrier: " + barrier.getParties() + " thread: " + getName());
 	}
 
 	@Override
@@ -26,16 +65,20 @@ public class TheNode extends NodeAbstract {
 
 	@Override
 	public void wakeup(Node neighbour) {
-		wakeUpFrom = neighbour;
-		isSleeping.set(!isSleeping.get());
-		System.out.println("Knoten: " + wakeUpFrom + " weckt Knoten: " + toString());
+
+		if (readSleeping()) {
+			wakeUpFrom = neighbour;
+			isSleeping = false;
+			System.out.println("Knoten: " + wakeUpFrom + " weckt Knoten: " + toString());
+		} else {
+			writeSingleEchoReceived();
+		}
 
 	}
 
 	@Override
 	public void echo(Node neighbour, Object data) {
-		System.out.println("SENDE echo von " + neighbour + " an: " + toString());
-		echoReceived.incrementAndGet();
+		writeEcho(neighbour, data);
 	}
 
 	@Override
@@ -50,19 +93,24 @@ public class TheNode extends NodeAbstract {
 	}
 
 	public void run() {
+		
+		
 		try {
 			barrier.await();
 		} catch (InterruptedException | BrokenBarrierException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		if (neighbours.size() != 0) {
+			while (!isDone) {
+				checkInitiatorToWakeUpNodes();
 
-		while (!isDone) {
-			checkInitiatorToWakeUpNodes();
+				if (!readSleeping()) {
+					checkWakeUp();
+					checkEcho();
+				}
 
-			if (!isSleeping.get()) {
-				checkWakeUp();
-				checkEcho();
 			}
 
 		}
@@ -79,20 +127,20 @@ public class TheNode extends NodeAbstract {
 
 	private void checkInitiatorToWakeUpNodes() {
 		if (initiator == true) {
-			isSleeping.set(false);
+			isSleeping = false;
 
-			if (echoReceived.get() == neighbours.size()) {
+			if (echoReceived == neighbours.size()) {
 				System.out.println("bin durch... " + toString());
 				isDone = true;
 			}
 		}
 	}
 
-	private void checkEcho() {
-		if ((initiator == false) && (echoReceived.get() == neighbours.size() - 1)) {
+	private  void checkEcho() {
+		if ((initiator == false) && (echoReceived == neighbours.size() - 1)) {
 			wakeUpFrom.echo(this, "fertig");
 			isDone = true;
-			isSleeping.set(true);
+			isSleeping = true;
 
 		}
 	}
@@ -100,19 +148,18 @@ public class TheNode extends NodeAbstract {
 	private void checkWakeUp() {
 
 		if (!wokenUpNeighbours && neighbours.size() > 1) {
+			
 			CyclicBarrier cbForWakeup = null;
 			if (!initiator && neighbours.size() > 1) {
 				cbForWakeup = new CyclicBarrier(neighbours.size() - 1);
 			} else {
 				cbForWakeup = new CyclicBarrier(neighbours.size());
 			}
+
 			for (Node neighbour : neighbours) {
 
 				if (!(neighbour == wakeUpFrom)) {
-					/*
-					 * schicke alle knoten die geweckt werden in einen thread
-					 * mit cyclicbarrier Werden alle gleichzeitig geweckt
-					 */
+					// start single thread to start wakeup()
 					new SyncronStarter(neighbour, this, cbForWakeup).start();
 				}
 
@@ -127,5 +174,6 @@ public class TheNode extends NodeAbstract {
 			neighbour.hello(this);
 		}
 	}
+
 
 }
