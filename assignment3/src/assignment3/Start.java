@@ -54,12 +54,12 @@ public class Start {
 		 * |_|
 		 * 
 		 */
-//		myNode1.setupNeighbours(myNode1,myNode2);
-//		myNode2.setupNeighbours(); 
-//		myNode3.setupNeighbours();
-//		myNode4.setupNeighbours();
-//		myNode5.setupNeighbours();
-//		myNode6.setupNeighbours();
+		myNode1.setupNeighbours(myNode1,myNode2);
+		myNode2.setupNeighbours(); 
+		myNode3.setupNeighbours();
+		myNode4.setupNeighbours();
+		myNode5.setupNeighbours();
+		myNode6.setupNeighbours();
 
 		/*
 		 * Baum
@@ -69,12 +69,12 @@ public class Start {
 		 * 2     6	
 		 *
 		 */	 
-		myNode1.setupNeighbours(myNode2,myNode3);
-		myNode2.setupNeighbours(); 
-		myNode3.setupNeighbours(myNode4);
-		myNode4.setupNeighbours(myNode5,myNode6);
-		myNode5.setupNeighbours(myNode4);
-		myNode6.setupNeighbours(myNode4);
+//		myNode1.setupNeighbours(myNode2,myNode3);
+//		myNode2.setupNeighbours(); 
+//		myNode3.setupNeighbours(myNode4);
+//		myNode4.setupNeighbours(myNode5,myNode6);
+//		myNode5.setupNeighbours(myNode4);
+//		myNode6.setupNeighbours(myNode4);
 		
 		myNode1.start();
 		myNode2.start();

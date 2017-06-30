@@ -24,7 +24,7 @@ public class SyncronStarter extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
-		System.out.println("Knoten: " + wakeUpSource + " weckt Knoten: " + neighbourToWake.toString());
+		//System.out.println("Knoten: " + wakeUpSource + " weckt Knoten: " + neighbourToWake.toString());
 		neighbourToWake.wakeup(wakeUpSource);
 		
 	}
