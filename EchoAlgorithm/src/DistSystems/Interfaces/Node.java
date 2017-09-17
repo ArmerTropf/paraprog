@@ -1,3 +1,5 @@
+package DistSystems.Interfaces;
+
 /**
  * This interface defines the methods of each node participating in the echo
  * algorithm. These methods can be called by the neighbours of a node.

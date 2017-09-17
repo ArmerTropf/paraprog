@@ -1,9 +1,11 @@
+package DistSystems.Interfaces;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CyclicBarrier;
 
 /**
- * Abstract implementation of the Node interface.
+ * Abstract implementation of the DistSystems.Interfaces.Node interface.
  */
 public abstract class NodeAbstract extends Thread implements Node {
 
