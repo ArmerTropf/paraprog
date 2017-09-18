@@ -29,7 +29,7 @@ public class EchoAlgorithm {
     public void start() {
         startAllNodes();
         joinAllNodes();
-        printAllNodesNeighbours();
+        //printAllNodesNeighbours();
     }
 
     private void startAllNodes() {
@@ -65,13 +65,12 @@ public class EchoAlgorithm {
         nodes.add(new NodeImp("7", false, helloBarrier));
 
         nodes.get(0).setupNeighbours(nodes.get(1), nodes.get(2));
-        nodes.get(2).setupNeighbours(nodes.get(3));
-        nodes.get(3).setupNeighbours(nodes.get(4), nodes.get(5));
-        nodes.get(4).setupNeighbours(nodes.get(3));
-        nodes.get(5).setupNeighbours(nodes.get(3));
-        nodes.get(6).setupNeighbours(nodes.get(1));
+        nodes.get(2).setupNeighbours(nodes.get(3), nodes.get(1));
+        nodes.get(3).setupNeighbours(nodes.get(4), nodes.get(5), nodes.get(3));
+        nodes.get(5).setupNeighbours(nodes.get(0));
+        nodes.get(6).setupNeighbours(nodes.get(1), nodes.get(4));
         nodes.get(7).setupNeighbours(nodes.get(6));
-//        nodes.get(7).setupNeighbours(nodes.get(1));
+        nodes.get(7).setupNeighbours(nodes.get(1));
     }
 
     private void setupNeighboursJSON() {

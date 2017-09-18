@@ -17,6 +17,7 @@ public class NodeImp extends NodeAbstract {
     private boolean sleeping = true;
     private Node neighbourAwakenMe;
     private int numberOfMessagesReceived = 0;
+    private SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
 
     /**
      * Constructor of an echo node
@@ -110,16 +111,17 @@ public class NodeImp extends NodeAbstract {
     }
 
     private boolean receivedAMessageFromEveryNeighbour() {
-        int expectedNumberOfMessages = initiator ? neighbours.size() - 1 : neighbours.size();
+        int expectedNumberOfMessages = initiator ? neighbours.size() + 1 : neighbours.size();
         return numberOfMessagesReceived == expectedNumberOfMessages;
     }
 
     private void printTree() {
+        System.out.println(spanningTreeNode);
     }
 
     private void sendEcho() {
         System.out.println(this + " sends echo to " + neighbourAwakenMe + " thread: " + currentThread().getName());
-        neighbourAwakenMe.echo(this, null);
+        neighbourAwakenMe.echo(this, spanningTreeNode);
     }
 
     /* Node interface implementation */
@@ -154,6 +156,7 @@ public class NodeImp extends NodeAbstract {
     @Override
     public synchronized void echo(Node neighbour, Object data) {
         ++numberOfMessagesReceived;
+        spanningTreeNode.addPrecursor((SpanningTreeNode) data);
         System.out.println(this + " received an echo from " + neighbour + " thread: " + currentThread().getName());
 
         notifyAll();
