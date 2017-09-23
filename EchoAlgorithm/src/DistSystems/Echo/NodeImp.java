@@ -116,7 +116,7 @@ public class NodeImp extends NodeAbstract {
     }
 
     private void printTree() {
-        System.out.println(spanningTreeNode);
+        System.out.println(spanningTreeNode.toString());
     }
 
     private void sendEcho() {

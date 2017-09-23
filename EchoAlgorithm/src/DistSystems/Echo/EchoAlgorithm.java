@@ -9,17 +9,17 @@ import java.util.List;
  */
 public class EchoAlgorithm {
 
-    List<NodeImp> nodes;
+    private List<NodeImp> nodes;
 
     public static void main(String[] args) {
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 100; i++) {
             EchoAlgorithm echoAlgorithm = new EchoAlgorithm();
             echoAlgorithm.start();
         }
     }
 
     public EchoAlgorithm() {
-        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(10, 1, 1);
+        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(10, 1, 0.2);
         nodes = graphBuilder.build();
     }
 
@@ -30,7 +30,7 @@ public class EchoAlgorithm {
     }
 
     private void startAllNodes() {
-        nodes.forEach(node -> node.start());
+        nodes.forEach(Thread::start);
     }
 
     private void joinAllNodes() {
@@ -44,6 +44,6 @@ public class EchoAlgorithm {
     }
 
     private void printAllNodesNeighbours() {
-        nodes.forEach(node -> node.printNeighbours());
+        nodes.forEach(NodeImp::printNeighbours);
     }
 }
