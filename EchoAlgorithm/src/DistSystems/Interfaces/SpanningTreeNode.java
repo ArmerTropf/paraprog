@@ -1,6 +1,4 @@
-package DistSystems.Echo;
-
-import DistSystems.Interfaces.Node;
+package DistSystems.Interfaces;
 
 import java.util.HashSet;
 import java.util.Set;

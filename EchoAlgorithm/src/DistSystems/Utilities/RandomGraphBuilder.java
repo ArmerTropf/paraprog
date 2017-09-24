@@ -1,7 +1,9 @@
 package DistSystems.Utilities;
 
-import DistSystems.Echo.NodeImp;
+import DistSystems.Echo.EchoNode;
+import DistSystems.Election.ElectionNode;
 import DistSystems.Interfaces.Node;
+import DistSystems.Interfaces.NodeAbstract;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -14,7 +16,7 @@ import java.util.concurrent.CyclicBarrier;
  */
 public class RandomGraphBuilder {
 
-    private List<NodeImp> nodes;
+    private List<ElectionNode> nodes;
     private CyclicBarrier helloBarrier;
 
     private int numberOfNodes;
@@ -32,7 +34,7 @@ public class RandomGraphBuilder {
         this.helloBarrier = new CyclicBarrier(numberOfNodes);
     }
 
-    public List<NodeImp> build() {
+    public List<ElectionNode> build() {
         generateGraph();
         return nodes;
     }
@@ -44,8 +46,9 @@ public class RandomGraphBuilder {
 
     private void generateNodes() {
         for (int i = 0; i < numberOfNodes; i++) {
-            NodeImp node = new NodeImp(
+            ElectionNode node = new ElectionNode(
                     Integer.toString(i),
+                    i,
                     isNodeAnInitiator(),
                     helloBarrier);
             nodes.add(node);
@@ -56,10 +59,10 @@ public class RandomGraphBuilder {
         // TODO: generate tree
         // TODO: generate circle
 
-        for (NodeImp node : nodes) {
-            LinkedList<Node> neighbours = new LinkedList<>();
+        for (NodeAbstract node : nodes) {
+            LinkedList<NodeAbstract> neighbours = new LinkedList<>();
 
-            for (NodeImp neighbour : nodes) {
+            for (NodeAbstract neighbour : nodes) {
                 // TODO: switch for slings
                 if (neighbour == node)
                     continue;
@@ -69,7 +72,7 @@ public class RandomGraphBuilder {
                     neighbours.add(neighbour);
             }
 
-            node.setupNeighbours(neighbours.toArray(new Node[neighbours.size()]));
+            node.setupNeighbours(neighbours.toArray(new NodeAbstract[neighbours.size()]));
         }
     }
 

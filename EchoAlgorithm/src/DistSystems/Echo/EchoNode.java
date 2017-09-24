@@ -2,6 +2,7 @@ package DistSystems.Echo;
 
 import DistSystems.Interfaces.Node;
 import DistSystems.Interfaces.NodeAbstract;
+import DistSystems.Interfaces.SpanningTreeNode;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -12,7 +13,7 @@ import java.util.concurrent.CyclicBarrier;
 /**
  * Created by Hendrik Mahrt on 17.09.2017.
  */
-public class NodeImp extends NodeAbstract {
+public class EchoNode extends NodeAbstract {
 
     private boolean sleeping = true;
     private Node neighbourAwakenMe;
@@ -26,7 +27,7 @@ public class NodeImp extends NodeAbstract {
      * @param initiator Whether this node is the initiator or not.
      * @param barrier CyclicBarrier for synchronisation of start.
      */
-    public NodeImp(String name, boolean initiator, CyclicBarrier barrier) {
+    public EchoNode(String name, boolean initiator, CyclicBarrier barrier) {
         super(name, initiator, barrier);
     }
 
@@ -48,7 +49,7 @@ public class NodeImp extends NodeAbstract {
             sendHelloToAllNeighbours();
 
             if (initiator)
-                wakeup(null); // let initiator wakeup itself
+                wakeup(null, 0); // let initiator wakeup itself
 
             if (hasWakeupHappened())
                 wakeupNeighbours();
@@ -102,7 +103,7 @@ public class NodeImp extends NodeAbstract {
     private void wakeupNeighbours() {
         neighbours.parallelStream()
                 .filter(node -> !node.equals(neighbourAwakenMe))
-                .forEach(node -> node.wakeup(this));
+                .forEach(node -> node.wakeup(this, 0));
     }
 
     private synchronized void waitForAllMessages() throws InterruptedException {
@@ -121,7 +122,7 @@ public class NodeImp extends NodeAbstract {
 
     private void sendEcho() {
         System.out.println(this + " sends echo to " + neighbourAwakenMe + " thread: " + currentThread().getName());
-        neighbourAwakenMe.echo(this, spanningTreeNode);
+        neighbourAwakenMe.echo(this, 0, spanningTreeNode);
     }
 
     /* Node interface implementation */
@@ -137,7 +138,7 @@ public class NodeImp extends NodeAbstract {
     }
 
     @Override
-    public synchronized void wakeup(Node neighbour) {
+    public synchronized void wakeup(Node neighbour, int rank) {
         ++numberOfMessagesReceived;
         System.out.println(this + " woken up by " + neighbour + " thread: " + currentThread().getName());
 
@@ -154,7 +155,7 @@ public class NodeImp extends NodeAbstract {
     }
 
     @Override
-    public synchronized void echo(Node neighbour, Object data) {
+    public synchronized void echo(Node neighbour, int rank, Object data) {
         ++numberOfMessagesReceived;
         spanningTreeNode.addPrecursor((SpanningTreeNode) data);
         System.out.println(this + " received an echo from " + neighbour + " thread: " + currentThread().getName());
