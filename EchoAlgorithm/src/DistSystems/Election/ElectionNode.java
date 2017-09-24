@@ -19,8 +19,10 @@ public class ElectionNode extends NodeAbstract {
     private boolean sleeping = true;
     private Node neighbourAwakenMe;
     private int numberOfMessagesReceived = 0;
+    private int numberOfEchosReceived = 0;
     private SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
     private int rank = 0;
+    private boolean newWakeup = false;
 
     /**
      * Constructor of an election node.
@@ -64,12 +66,19 @@ public class ElectionNode extends NodeAbstract {
             else
                 return; // stop thread when no wakeup happened
 
-            waitForAllMessages();
+            do {
+                if (newWakeup) {
+                    newWakeup = false;
+                    wakeupNeighbours();
+                }
+                waitForAllMessages();
+            } while (newWakeup);
 
             if (isThisNodeWinner())
                 printTree();
             else
                 sendEcho();
+
 
         } catch (BrokenBarrierException | InterruptedException e) {
             e.printStackTrace();
@@ -119,13 +128,13 @@ public class ElectionNode extends NodeAbstract {
     }
 
     private synchronized void waitForAllMessages() throws InterruptedException {
-        while(!receivedAMessageFromEveryNeighbour())
+        while(!receivedAMessageFromEveryNeighbour() && !newWakeup)
             wait();
     }
 
     private boolean receivedAMessageFromEveryNeighbour() {
         int expectedNumberOfMessages = neighbours.size();
-        return numberOfMessagesReceived == expectedNumberOfMessages;
+        return numberOfMessagesReceived + numberOfEchosReceived == expectedNumberOfMessages;
     }
 
     private void printTree() {
@@ -155,23 +164,26 @@ public class ElectionNode extends NodeAbstract {
         if (!sleeping) {
 
             if (neighourRank == this.rank) {
-                System.out.println(this + " already woken up with rank: " + neighourRank + " thread: " + currentThread().getName());
-                ++numberOfMessagesReceived;
+                System.out.println(this + " already woken up with rank: " + neighourRank + ". neighbour: " + neighbour  + " number of messages received: " + ++numberOfMessagesReceived + " thread: " + currentThread().getName());
+//                ++numberOfMessagesReceived;
             } else if (neighourRank  < this.rank) {
                 // do nothing
+                System.out.println(this + " woken up by " + neighbour + " with lower rank " + neighourRank  + " number of messages received: " + numberOfMessagesReceived +". ignore!");
             } else {
                 // conquer
-                System.out.println(this + " conquered by " + neighbour + " rank: " + neighourRank + " thread: " + currentThread().getName());
+                System.out.println(this + " conquered by " + neighbour + " rank: " + neighourRank  + " number of messages received: 1 thread: " + currentThread().getName());
                 neighbourAwakenMe = neighbour;
                 this.rank = neighourRank;
                 numberOfMessagesReceived = 1;
-                wakeupNeighbours(); // problem?
+                newWakeup = true;
+                //wakeupNeighbours(); // problem?
+
             }
 
         } else {
             // first wakeup
-            System.out.println(this + " woken up by " + neighbour + " rank: " + neighourRank + " thread: " + currentThread().getName());
-
+            System.out.println(this + " woken up by " + neighbour + " rank: " + neighourRank + " number of messages received: " + ++numberOfMessagesReceived + " thread: " + currentThread().getName());
+//            ++numberOfMessagesReceived;
             neighbourAwakenMe = neighbour;
             this.rank = neighourRank;
             sleeping = false;
@@ -183,11 +195,9 @@ public class ElectionNode extends NodeAbstract {
     @Override
     public synchronized void echo(Node neighbour, int neighbourRank, Object data) {
 
-        if (neighbourRank == this.rank) {
-            ++numberOfMessagesReceived;
-            spanningTreeNode.addPrecursor((SpanningTreeNode) data);
-            System.out.println(this + " received an echo from " + neighbour + " rank: " + neighbourRank + " number of messages received: " + numberOfMessagesReceived + " thread: " + currentThread().getName());
-        }
+        ++numberOfEchosReceived;
+        spanningTreeNode.addPrecursor((SpanningTreeNode) data);
+        System.out.println(this + " received an echo from " + neighbour + " rank: " + neighbourRank + " number of echos received: " + numberOfEchosReceived + " thread: " + currentThread().getName());
 
         notifyAll();
     }
