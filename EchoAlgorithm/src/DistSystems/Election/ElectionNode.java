@@ -8,7 +8,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Phaser;
 
 /**
  * Created by Hendrik Mahrt on 23.09.17.
@@ -23,14 +26,9 @@ public class ElectionNode extends NodeAbstract {
     private SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
     private int rank = 0;
     private boolean newWakeup = false;
+    private boolean leaderNotElected = true;
+    private boolean newEcho = false;
 
-    /**
-     * Constructor of an election node.
-     *
-     * @param name
-     * @param initiator
-     * @param barrier
-     */
     public ElectionNode(String name, int rank, boolean initiator, CyclicBarrier barrier) {
         super(name, initiator, barrier);
         this.rank = rank;
@@ -48,7 +46,7 @@ public class ElectionNode extends NodeAbstract {
         notifyAll();
     }
 
-    public void printNeighbours() {
+    public synchronized void printNeighbours() {
         System.out.print(this.toString() + ": ");
         neighbours.forEach((node) -> System.out.print(node + " | "));
         System.out.println();
@@ -66,22 +64,36 @@ public class ElectionNode extends NodeAbstract {
             else
                 return; // stop thread when no wakeup happened
 
-            do {
-                if (newWakeup) {
-                    newWakeup = false;
-                    wakeupNeighbours();
-                }
-                waitForAllMessages();
-            } while (newWakeup);
 
-            if (isThisNodeWinner())
-                printTree();
-            else
-                sendEcho();
+                do {
+                    if (newWakeup) {
+                        newWakeup = false;
+                        wakeupNeighbours();
+                    }
+                    waitForAllMessages();
+                } while (newWakeup);
+
+                if (isThisNodeWinner())
+                    printTree();
+                else
+                    sendEcho();
+                // wait for another echo, or leader
+
+            while(leaderNotElected) {
+                test();
+                if (newEcho)
+                    sendEcho();
+            }
 
 
         } catch (BrokenBarrierException | InterruptedException e) {
             e.printStackTrace();
+        }
+    }
+
+    private synchronized void test() throws InterruptedException {
+        while (leaderNotElected && !newEcho) {
+            wait();
         }
     }
 
@@ -90,18 +102,10 @@ public class ElectionNode extends NodeAbstract {
     }
 
     private void sendHelloToAllNeighbours() throws BrokenBarrierException, InterruptedException {
-        Set<Node> initialNeighbours = getCopyOfNeighbours();
-        initialNeighbours.parallelStream().forEach((node -> node.hello(this)));
+        new CopyOnWriteArraySet<>(neighbours)
+                .parallelStream().
+                forEach((node -> node.hello(this)));
         waitForOtherNodes();
-    }
-
-    private Set<Node> getCopyOfNeighbours() {
-        Set<Node> neighboursCopy = new HashSet<>();
-        synchronized (this) {
-            neighboursCopy.addAll(neighbours);
-        }
-
-        return neighboursCopy;
     }
 
     private void waitForOtherNodes() throws BrokenBarrierException, InterruptedException {
@@ -138,12 +142,15 @@ public class ElectionNode extends NodeAbstract {
     }
 
     private void printTree() {
+        leaderNotElected = false;
+        neighbours.parallelStream().forEach(node -> node.leaderElected(this));
         System.out.println(spanningTreeNode.toString());
     }
 
     private void sendEcho() {
         System.out.println(this + " sends echo to " + neighbourAwakenMe + " thread: " + currentThread().getName());
         neighbourAwakenMe.echo(this, this.rank, spanningTreeNode);
+        newEcho = false;
     }
 
     /* Node interface implementation */
@@ -175,9 +182,9 @@ public class ElectionNode extends NodeAbstract {
                 neighbourAwakenMe = neighbour;
                 this.rank = neighourRank;
                 numberOfMessagesReceived = 1;
+                numberOfEchosReceived = 0;
                 newWakeup = true;
                 //wakeupNeighbours(); // problem?
-
             }
 
         } else {
@@ -198,7 +205,16 @@ public class ElectionNode extends NodeAbstract {
         ++numberOfEchosReceived;
         spanningTreeNode.addPrecursor((SpanningTreeNode) data);
         System.out.println(this + " received an echo from " + neighbour + " rank: " + neighbourRank + " number of echos received: " + numberOfEchosReceived + " thread: " + currentThread().getName());
+        newEcho = true;
+        notifyAll();
+    }
 
+    @Override
+    public synchronized void leaderElected(ElectionNode electionNode) {
+        neighbours.parallelStream()
+                .filter(node -> node != electionNode)
+                .forEach(node -> node.leaderElected(this));
+        leaderNotElected = false;
         notifyAll();
     }
 }

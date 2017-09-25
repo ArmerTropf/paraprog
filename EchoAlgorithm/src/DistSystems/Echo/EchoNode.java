@@ -1,5 +1,6 @@
 package DistSystems.Echo;
 
+import DistSystems.Election.ElectionNode;
 import DistSystems.Interfaces.Node;
 import DistSystems.Interfaces.NodeAbstract;
 import DistSystems.Interfaces.SpanningTreeNode;
@@ -8,6 +9,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CyclicBarrier;
 
 /**
@@ -20,13 +22,6 @@ public class EchoNode extends NodeAbstract {
     private int numberOfMessagesReceived = 0;
     private SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
 
-    /**
-     * Constructor of an echo node
-     *
-     * @param name Name of the node.
-     * @param initiator Whether this node is the initiator or not.
-     * @param barrier CyclicBarrier for synchronisation of start.
-     */
     public EchoNode(String name, boolean initiator, CyclicBarrier barrier) {
         super(name, initiator, barrier);
     }
@@ -37,7 +32,7 @@ public class EchoNode extends NodeAbstract {
         notifyAll();
     }
 
-    public void printNeighbours() {
+    public synchronized void printNeighbours() {
         System.out.print(this.toString() + ": ");
         neighbours.forEach((node) -> System.out.print(node + " | "));
         System.out.println();
@@ -69,18 +64,10 @@ public class EchoNode extends NodeAbstract {
     }
 
     private void sendHelloToAllNeighbours() throws BrokenBarrierException, InterruptedException {
-        Set<Node> initialNeighbours = getCopyOfNeighbours();
-        initialNeighbours.parallelStream().forEach((node -> node.hello(this)));
+        new CopyOnWriteArraySet<>(neighbours)
+                .parallelStream().
+                forEach((node -> node.hello(this)));
         waitForOtherNodes();
-    }
-
-    private Set<Node> getCopyOfNeighbours() {
-        Set<Node> neighboursCopy = new HashSet<>();
-        synchronized (this) {
-            neighboursCopy.addAll(neighbours);
-        }
-
-        return neighboursCopy;
     }
 
     private void waitForOtherNodes() throws BrokenBarrierException, InterruptedException {
@@ -161,5 +148,10 @@ public class EchoNode extends NodeAbstract {
         System.out.println(this + " received an echo from " + neighbour + " thread: " + currentThread().getName());
 
         notifyAll();
+    }
+
+    @Override
+    public void leaderElected(ElectionNode electionNode) {
+
     }
 }

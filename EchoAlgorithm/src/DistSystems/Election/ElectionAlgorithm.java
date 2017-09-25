@@ -12,7 +12,7 @@ import java.util.concurrent.CyclicBarrier;
 public class ElectionAlgorithm extends EchoAlgorithm {
 
     public static void main(String[] args) {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1; i++) {
             ElectionAlgorithm electionAlgorithm = new ElectionAlgorithm();
             electionAlgorithm.start();
         }
@@ -20,10 +20,10 @@ public class ElectionAlgorithm extends EchoAlgorithm {
 
     public ElectionAlgorithm() {
 
-//        generateGraph();
+        generateGraph();
 
-        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(10, 3, 0.3);
-        nodes = graphBuilder.build();
+//        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(10, 3, 0.3);
+//        nodes = graphBuilder.build();
     }
 
     private void generateGraph() {
