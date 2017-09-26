@@ -29,12 +29,12 @@ public class ElectionAlgorithm extends EchoAlgorithm {
     private void generateGraph() {
         CyclicBarrier cyclicBarrier = new CyclicBarrier(6);
         nodes = new LinkedList<>();
-        nodes.add(new ElectionNode("0", 0, true, cyclicBarrier));
-        nodes.add(new ElectionNode("1", 1, false, cyclicBarrier));
-        nodes.add(new ElectionNode("2", 2, false, cyclicBarrier));
-        nodes.add(new ElectionNode("3", 3, false, cyclicBarrier));
-        nodes.add(new ElectionNode("4", 4, false, cyclicBarrier));
-        nodes.add(new ElectionNode("5", 5, true, cyclicBarrier));
+        nodes.add(new ElectionNodeImp("0", 0, true, cyclicBarrier));
+        nodes.add(new ElectionNodeImp("1", 1, false, cyclicBarrier));
+        nodes.add(new ElectionNodeImp("2", 2, false, cyclicBarrier));
+        nodes.add(new ElectionNodeImp("3", 3, false, cyclicBarrier));
+        nodes.add(new ElectionNodeImp("4", 4, false, cyclicBarrier));
+        nodes.add(new ElectionNodeImp("5", 5, true, cyclicBarrier));
 
         nodes.get(0).setupNeighbours(nodes.get(1), nodes.get(2));
         nodes.get(1).setupNeighbours(nodes.get(2));

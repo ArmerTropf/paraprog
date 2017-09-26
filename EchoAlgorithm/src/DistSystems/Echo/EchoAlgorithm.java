@@ -1,7 +1,7 @@
 package DistSystems.Echo;
 
 import DistSystems.Election.ElectionAlgorithm;
-import DistSystems.Election.ElectionNode;
+import DistSystems.Election.ElectionNodeImp;
 import DistSystems.Interfaces.NodeAbstract;
 import DistSystems.Utilities.RandomGraphBuilder;
 
@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class EchoAlgorithm {
 
-    protected List<ElectionNode> nodes;
+    protected List<ElectionNodeImp> nodes;
 
     public static void main(String[] args) {
         for (int i = 0; i < 100; i++) {
@@ -47,6 +47,6 @@ public class EchoAlgorithm {
     }
 
     private void printAllNodesNeighbours() {
-        nodes.forEach(ElectionNode::printNeighbours);
+        nodes.forEach(ElectionNodeImp::printNeighbours);
     }
 }

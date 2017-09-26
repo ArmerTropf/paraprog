@@ -1,7 +1,5 @@
 package DistSystems.Interfaces;
 
-import DistSystems.Election.ElectionNode;
-
 /**
  * This interface defines the methods of each node participating in the echo
  * algorithm. These methods can be called by the neighbours of a node.
@@ -27,7 +25,7 @@ public interface Node {
 	 *
 	 * @param neighbour
 	 */
-	public void wakeup(Node neighbour, int rank);
+	public void wakeup(Node neighbour);
 
 	/**
 	 * Incoming "echo" message from a neighbour. The neighbour can also send
@@ -38,7 +36,5 @@ public interface Node {
 	 * @param neighbour
 	 * @param data
 	 */
-	public void echo(Node neighbour, int rank, Object data);
-
-    void leaderElected(ElectionNode electionNode);
+	public void echo(Node neighbour, Object data);
 }

@@ -1,13 +1,10 @@
 package DistSystems.Echo;
 
-import DistSystems.Election.ElectionNode;
 import DistSystems.Interfaces.Node;
 import DistSystems.Interfaces.NodeAbstract;
 import DistSystems.Interfaces.SpanningTreeNode;
 
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CyclicBarrier;
@@ -17,13 +14,16 @@ import java.util.concurrent.CyclicBarrier;
  */
 public class EchoNode extends NodeAbstract {
 
-    private boolean sleeping = true;
-    private Node neighbourAwakenMe;
-    private int numberOfMessagesReceived = 0;
-    private SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
+    protected boolean sleeping = true;
+    protected Node neighbourAwakenMe;
+    protected int numberOfMessagesReceived = 0;
+    protected SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
 
     public EchoNode(String name, boolean initiator, CyclicBarrier barrier) {
         super(name, initiator, barrier);
+        
+                if (initiator)
+            System.out.println(name + " is an initiator");
     }
 
     @Override
@@ -42,9 +42,10 @@ public class EchoNode extends NodeAbstract {
     public void run() {
         try {
             sendHelloToAllNeighbours();
+            waitForOtherNodes();
 
             if (initiator)
-                wakeup(null, 0); // let initiator wakeup itself
+                wakeup(null); // let initiator wakeup itself
 
             if (hasWakeupHappened())
                 wakeupNeighbours();
@@ -63,18 +64,17 @@ public class EchoNode extends NodeAbstract {
         }
     }
 
-    private void sendHelloToAllNeighbours() throws BrokenBarrierException, InterruptedException {
+    protected void sendHelloToAllNeighbours() throws BrokenBarrierException, InterruptedException {
         new CopyOnWriteArraySet<>(neighbours)
-                .parallelStream().
-                forEach((node -> node.hello(this)));
-        waitForOtherNodes();
+                .parallelStream()
+                .forEach((node -> node.hello(this)));
     }
 
-    private void waitForOtherNodes() throws BrokenBarrierException, InterruptedException {
+    protected void waitForOtherNodes() throws BrokenBarrierException, InterruptedException {
         barrier.await();
     }
 
-    private synchronized boolean hasWakeupHappened() throws InterruptedException {
+    protected synchronized boolean hasWakeupHappened() throws InterruptedException {
         while(sleeping) {
             wait(1000);
 
@@ -87,29 +87,29 @@ public class EchoNode extends NodeAbstract {
         return true;
     }
 
-    private void wakeupNeighbours() {
+    protected void wakeupNeighbours() {
         neighbours.parallelStream()
                 .filter(node -> !node.equals(neighbourAwakenMe))
-                .forEach(node -> node.wakeup(this, 0));
+                .forEach(node -> node.wakeup(this));
     }
 
-    private synchronized void waitForAllMessages() throws InterruptedException {
+    protected synchronized void waitForAllMessages() throws InterruptedException {
         while(!receivedAMessageFromEveryNeighbour())
             wait();
     }
 
-    private boolean receivedAMessageFromEveryNeighbour() {
+    protected synchronized boolean receivedAMessageFromEveryNeighbour() {
         int expectedNumberOfMessages = initiator ? neighbours.size() + 1 : neighbours.size();
         return numberOfMessagesReceived == expectedNumberOfMessages;
     }
 
-    private void printTree() {
+    protected void printTree() {
         System.out.println(spanningTreeNode.toString());
     }
 
-    private void sendEcho() {
+    protected void sendEcho() {
         System.out.println(this + " sends echo to " + neighbourAwakenMe + " thread: " + currentThread().getName());
-        neighbourAwakenMe.echo(this, 0, spanningTreeNode);
+        neighbourAwakenMe.echo(this, spanningTreeNode);
     }
 
     /* Node interface implementation */
@@ -125,7 +125,7 @@ public class EchoNode extends NodeAbstract {
     }
 
     @Override
-    public synchronized void wakeup(Node neighbour, int rank) {
+    public synchronized void wakeup(Node neighbour) {
         ++numberOfMessagesReceived;
         System.out.println(this + " woken up by " + neighbour + " thread: " + currentThread().getName());
 
@@ -142,16 +142,11 @@ public class EchoNode extends NodeAbstract {
     }
 
     @Override
-    public synchronized void echo(Node neighbour, int rank, Object data) {
+    public synchronized void echo(Node neighbour, Object data) {
         ++numberOfMessagesReceived;
         spanningTreeNode.addPrecursor((SpanningTreeNode) data);
         System.out.println(this + " received an echo from " + neighbour + " thread: " + currentThread().getName());
 
         notifyAll();
-    }
-
-    @Override
-    public void leaderElected(ElectionNode electionNode) {
-
     }
 }
