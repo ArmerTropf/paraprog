@@ -16,7 +16,7 @@ import java.util.concurrent.CyclicBarrier;
  */
 public class RandomGraphBuilder {
 
-    private List<ElectionNodeImp> nodes;
+    private List<EchoNode> nodes;
     private CyclicBarrier helloBarrier;
 
     private int numberOfNodes;
@@ -34,7 +34,7 @@ public class RandomGraphBuilder {
         this.helloBarrier = new CyclicBarrier(numberOfNodes);
     }
 
-    public List<ElectionNodeImp> build() {
+    public List<EchoNode> build() {
         generateGraph();
         return nodes;
     }
@@ -46,9 +46,8 @@ public class RandomGraphBuilder {
 
     private void generateNodes() {
         for (int i = 0; i < numberOfNodes; i++) {
-            ElectionNodeImp node = new ElectionNodeImp(
+            EchoNode node = new EchoNode(
                     Integer.toString(i),
-                    i,
                     isNodeAnInitiator(),
                     helloBarrier);
             nodes.add(node);

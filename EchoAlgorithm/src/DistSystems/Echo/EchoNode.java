@@ -5,8 +5,9 @@ import DistSystems.Interfaces.NodeAbstract;
 import DistSystems.Interfaces.SpanningTreeNode;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CyclicBarrier;
 
 /**
@@ -14,15 +15,16 @@ import java.util.concurrent.CyclicBarrier;
  */
 public class EchoNode extends NodeAbstract {
 
-    protected boolean sleeping = true;
-    protected Node neighbourAwakenMe;
-    protected int numberOfMessagesReceived = 0;
-    protected SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
+    private boolean sleeping = true;
+    private Node neighbourAwakenMe;
+    private int numberOfMessagesReceived = 0;
+
+    private SpanningTreeNode spanningTreeNode = new SpanningTreeNode(this);
 
     public EchoNode(String name, boolean initiator, CyclicBarrier barrier) {
         super(name, initiator, barrier);
-        
-                if (initiator)
+
+        if (initiator)
             System.out.println(name + " is an initiator");
     }
 
@@ -65,9 +67,18 @@ public class EchoNode extends NodeAbstract {
     }
 
     protected void sendHelloToAllNeighbours() throws BrokenBarrierException, InterruptedException {
-        new CopyOnWriteArraySet<>(neighbours)
-                .parallelStream()
-                .forEach((node -> node.hello(this)));
+        Set<Node> initialNeighbours = getCopyOfNeighbours();
+        initialNeighbours.parallelStream().forEach((node -> node.hello(this)));
+        waitForOtherNodes();
+    }
+
+    private Set<Node> getCopyOfNeighbours() {
+        Set<Node> neighboursCopy = new HashSet<>();
+        synchronized (this) {
+            neighboursCopy.addAll(neighbours);
+        }
+
+        return neighboursCopy;
     }
 
     protected void waitForOtherNodes() throws BrokenBarrierException, InterruptedException {
@@ -98,7 +109,7 @@ public class EchoNode extends NodeAbstract {
             wait();
     }
 
-    protected synchronized boolean receivedAMessageFromEveryNeighbour() {
+    private synchronized boolean receivedAMessageFromEveryNeighbour() {
         int expectedNumberOfMessages = initiator ? neighbours.size() + 1 : neighbours.size();
         return numberOfMessagesReceived == expectedNumberOfMessages;
     }

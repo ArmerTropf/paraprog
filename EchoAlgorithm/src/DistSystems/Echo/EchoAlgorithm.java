@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class EchoAlgorithm {
 
-    protected List<ElectionNodeImp> nodes;
+    protected List<NodeAbstract> nodes;
 
     public static void main(String[] args) {
         for (int i = 0; i < 100; i++) {
@@ -22,8 +22,8 @@ public class EchoAlgorithm {
     }
 
     public EchoAlgorithm() {
-        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(10, 1, 0.2);
-        //nodes = graphBuilder.build();
+//        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(10, 1, 0.2);
+//        nodes = graphBuilder.build();
     }
 
     public void start() {
@@ -47,6 +47,6 @@ public class EchoAlgorithm {
     }
 
     private void printAllNodesNeighbours() {
-        nodes.forEach(ElectionNodeImp::printNeighbours);
+        nodes.forEach(node -> ((EchoNode)node).printNeighbours());
     }
 }

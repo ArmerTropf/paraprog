@@ -12,16 +12,16 @@ import java.util.concurrent.CyclicBarrier;
 public class ElectionNodeImp extends EchoNode implements ElectionNode {
 
     private final int nodeRank;
-    private int rank = 0;
-//    private boolean sleeping = true;
-//    private Node neighbourAwakenMe;
-//    private int numberOfMessagesReceived = 0;
-//    private int numberOfEchosReceived = 0;
+    private int currentRank = 0;
+    private boolean explored = false;
+    private int numberOfExploreMessagesReceived = 0;
+    private ElectionNode neighbourExploredMe;
+    private int numberOfEchosReceived = 0;
 
     public ElectionNodeImp(String name, int rank, boolean initiator, CyclicBarrier barrier) {
         super(name, initiator, barrier);
-        this.rank = rank;
-        this.nodeRank = rank;
+        currentRank = rank;
+        nodeRank = rank;
     }
 
     @Override
@@ -32,22 +32,22 @@ public class ElectionNodeImp extends EchoNode implements ElectionNode {
         
             // if initiator: receive explore message from 'virtual' neighbour
             if (initiator)
-                leaderExplore(null, this.rank);
+                leaderExplore(null, this.currentRank);
             
             // wait for explore message incoming
-            if (hasWakeupHappened())
+            if (hasExploreHappened())
                 // send explore message to all other neighbours
-                wakeupNeighbours();
+                exploreNeighbours();
             else
                 return; // stop thread when no explore happened
 
             // wait for explore/echos from all neighbours
-            waitForAllMessages();
-                        
+            waitForAllExplores();
+
             if (isThisNodeWinner())
-                printTree(); // start normal echo here and obtain spanningtree
+                System.out.println(this + " is winner. start normal echo"); // start normal echo here and obtain spanningtree
             else
-                sendEcho(); // send leaderecho
+                sendLeaderEcho(); // send leaderecho
                 
             // wait here for normal echo algorithm or being conquered -> send new echo and explorers
 
@@ -56,75 +56,77 @@ public class ElectionNodeImp extends EchoNode implements ElectionNode {
         }
     }
 
+    private void sendLeaderEcho() {
+        System.out.println(this + " sends leaderecho to " + neighbourExploredMe + " thread: " + currentThread().getName());
+        neighbourExploredMe.leaderEcho(this, this.currentRank);
+    }
+
+    private synchronized void waitForAllExplores() throws InterruptedException {
+        while(!receivedAMessageFromEveryNeighbour())
+            wait();
+    }
+
+    private synchronized boolean receivedAMessageFromEveryNeighbour() {
+        int expectedNumberOfMessages = initiator ? neighbours.size() + 1 : neighbours.size();
+        return numberOfExploreMessagesReceived + numberOfEchosReceived == expectedNumberOfMessages;
+    }
+
+    private synchronized boolean hasExploreHappened() throws InterruptedException {
+        while(!explored) {
+            wait(1000);
+
+            if (!explored) {
+                System.out.println("explore timeout. " +
+                        "Assume missing connection to initiator. shutting down node: " + this);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void exploreNeighbours() {
+        neighbours.parallelStream()
+                .filter(node -> !node.equals(neighbourExploredMe))
+                .forEach(node -> ((ElectionNode)node).leaderExplore(this, this.currentRank));
+    }
+
     private boolean isThisNodeWinner() {
-        return nodeRank == rank;
+        return nodeRank == currentRank;
+    }
+
+    /* ElectionNode interface implementation */
+
+    @Override
+    public synchronized void leaderExplore(ElectionNode neighbour, int neighboursRank) {
+
+        if (!explored) {
+            System.out.println(this + " explored with currentRank: " + neighboursRank + ". neighbour: " + neighbour  + " number of messages received: " + numberOfExploreMessagesReceived + " thread: " + currentThread().getName());
+            explored = true;
+            ++numberOfExploreMessagesReceived;
+            neighbourExploredMe = neighbour;
+            currentRank = neighboursRank;
+        } else {
+            if (currentRank == neighboursRank) {
+                ++numberOfExploreMessagesReceived;
+                System.out.println(this + " already explored with currentRank: " + neighboursRank + ". neighbour: " + neighbour  + " number of messages received: " + numberOfExploreMessagesReceived + " thread: " + currentThread().getName());
+            } else if (currentRank < neighboursRank) {
+                // conquered
+                System.out.println(this + " conquered by " + neighbour + " currentRank: " + neighboursRank + " number of messages received: 1 thread: " + currentThread().getName());
+                neighbourExploredMe = neighbour;
+                currentRank = neighboursRank;
+                numberOfExploreMessagesReceived = 1;
+                numberOfEchosReceived = 0;
+            } else {
+                System.out.println(this + " explored by " + neighbour + " with lower currentRank " + neighboursRank  + " number of messages received: " + numberOfExploreMessagesReceived +". ignore!");
+            }
+        }
+
+        notifyAll();
     }
 
     @Override
-    public void leaderExplore(ElectionNode neighbour, int neighboursRank) {
-        // TODO Auto-generated method stub
-        
+    public synchronized void leaderEcho(ElectionNode neighbour, int neighboursRank) {
+        ++numberOfEchosReceived;
+        notifyAll();
     }
-
-    @Override
-    public void leaderEcho(ElectionNode neighbour, int neighboursRank) {
-        // TODO Auto-generated method stub
-        
-    }
-
-    /* Node interface implementation */
-
-//    @Override
-//    public synchronized void hello(Node neighbour) {
-//        System.out.println(this + " got hello from " + neighbour + " thread: " + currentThread().getName());
-//
-//        if (!neighbours.contains(neighbour))
-//            neighbours.add(neighbour);
-//
-//        notifyAll();
-//    }
-//
-//    @Override
-//    public synchronized void wakeup(Node neighbour, int neighourRank) {
-//
-//        if (!sleeping) {
-//
-//            if (neighourRank == this.rank) {
-//                System.out.println(this + " already woken up with rank: " + neighourRank + ". neighbour: " + neighbour  + " number of messages received: " + ++numberOfMessagesReceived + " thread: " + currentThread().getName());
-////                ++numberOfMessagesReceived;
-//            } else if (neighourRank  < this.rank) {
-//                // do nothing
-//                System.out.println(this + " woken up by " + neighbour + " with lower rank " + neighourRank  + " number of messages received: " + numberOfMessagesReceived +". ignore!");
-//            } else {
-//                // conquer
-//                System.out.println(this + " conquered by " + neighbour + " rank: " + neighourRank  + " number of messages received: 1 thread: " + currentThread().getName());
-//                neighbourAwakenMe = neighbour;
-//                this.rank = neighourRank;
-//                numberOfMessagesReceived = 1;
-//                numberOfEchosReceived = 0;
-//                newWakeup = true;
-//                //wakeupNeighbours(); // problem?
-//            }
-//
-//        } else {
-//            // first wakeup
-//            System.out.println(this + " woken up by " + neighbour + " rank: " + neighourRank + " number of messages received: " + ++numberOfMessagesReceived + " thread: " + currentThread().getName());
-////            ++numberOfMessagesReceived;
-//            neighbourAwakenMe = neighbour;
-//            this.rank = neighourRank;
-//            sleeping = false;
-//        }
-//
-//        notifyAll();
-//    }
-//
-//    @Override
-//    public synchronized void echo(Node neighbour, int neighbourRank, Object data) {
-//
-//        ++numberOfEchosReceived;
-//        spanningTreeNode.addPrecursor((SpanningTreeNode) data);
-//        System.out.println(this + " received an echo from " + neighbour + " rank: " + neighbourRank + " number of echos received: " + numberOfEchosReceived + " thread: " + currentThread().getName());
-//        newEcho = true;
-//        notifyAll();
-//    }
 }
