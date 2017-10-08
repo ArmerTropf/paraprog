@@ -17,6 +17,9 @@ public class ElectionNodeImp extends EchoNode implements ElectionNode {
     private int numberOfExploreMessagesReceived = 0;
     private ElectionNode neighbourExploredMe;
     private int numberOfEchosReceived = 0;
+    private boolean leaderIsDetermined = false;
+    private ElectionNode leader = null;
+    private boolean conquered = false;
 
     public ElectionNodeImp(String name, int rank, boolean initiator, CyclicBarrier barrier) {
         super(name, initiator, barrier);
@@ -42,18 +45,51 @@ public class ElectionNodeImp extends EchoNode implements ElectionNode {
                 return; // stop thread when no explore happened
 
             // wait for explore/echos from all neighbours
-            waitForAllExplores();
+            waitForAllExploresAndResendExplorersIfCaputured();
 
+            if (!isThisNodeWinner())
+            sendLeaderEcho(); // send leaderecho
+
+            // if i am conquered: send a new echo to new neighbour. send explores to all other neighbours
+
+            waitForLeaderVictoryMessage();
+
+            sendVictoryMessage();
+
+            // wait here for normal echo algorithm or being conquered -> send new echo and explorers
             if (isThisNodeWinner())
                 System.out.println(this + " is winner. start normal echo"); // start normal echo here and obtain spanningtree
-            else
-                sendLeaderEcho(); // send leaderecho
-                
-            // wait here for normal echo algorithm or being conquered -> send new echo and explorers
+
+            // start echo with winner as only leader
+
+            // reset states. goto 0.
 
         } catch (BrokenBarrierException | InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    private synchronized void waitForLeaderVictoryMessage() throws InterruptedException {
+        while(!leaderIsDetermined) {
+            // if conquered -> send leaderEcho and explore messages
+
+            if (conquered)
+                resendExplorers();
+
+            if (isThisNodeWinner()) {
+                leader = this;
+                leaderIsDetermined = true;
+                return;
+            }
+
+            wait();
+        }
+    }
+
+    private void sendVictoryMessage() {
+        neighbours.parallelStream()
+                .filter(node -> !node.equals(neighbourExploredMe))
+                .forEach(node -> ((ElectionNode)node).leaderVictory(this, leader));
     }
 
     private void sendLeaderEcho() {
@@ -61,12 +97,23 @@ public class ElectionNodeImp extends EchoNode implements ElectionNode {
         neighbourExploredMe.leaderEcho(this, this.currentRank);
     }
 
-    private synchronized void waitForAllExplores() throws InterruptedException {
-        while(!receivedAMessageFromEveryNeighbour())
+    private synchronized void waitForAllExploresAndResendExplorersIfCaputured() throws InterruptedException {
+        while(!receivedAMessageFromEveryNeighbour()) {
+            if (conquered)
+                resendExplorers();
+
             wait();
+        }
+
     }
 
-    private synchronized boolean receivedAMessageFromEveryNeighbour() {
+    private synchronized void resendExplorers() {
+        System.out.println(this + " was conquered and needs to resend explorers");
+        exploreNeighbours();
+        conquered = false;
+    }
+
+    private boolean receivedAMessageFromEveryNeighbour() {
         int expectedNumberOfMessages = initiator ? neighbours.size() + 1 : neighbours.size();
         return numberOfExploreMessagesReceived + numberOfEchosReceived == expectedNumberOfMessages;
     }
@@ -116,6 +163,7 @@ public class ElectionNodeImp extends EchoNode implements ElectionNode {
                 currentRank = neighboursRank;
                 numberOfExploreMessagesReceived = 1;
                 numberOfEchosReceived = 0;
+                conquered = true;
             } else {
                 System.out.println(this + " explored by " + neighbour + " with lower currentRank " + neighboursRank  + " number of messages received: " + numberOfExploreMessagesReceived +". ignore!");
             }
@@ -127,6 +175,15 @@ public class ElectionNodeImp extends EchoNode implements ElectionNode {
     @Override
     public synchronized void leaderEcho(ElectionNode neighbour, int neighboursRank) {
         ++numberOfEchosReceived;
+        System.out.println(this + " received leader echo by " + neighbour + " with rank " + neighboursRank  + ". number of echos received: " + numberOfEchosReceived);
+        notifyAll();
+    }
+
+    @Override
+    public synchronized void leaderVictory(ElectionNode neighbour, ElectionNode victor) {
+        System.out.println(this + " received message that " + victor + " is leader");
+        leader = victor;
+        leaderIsDetermined = true;
         notifyAll();
     }
 }

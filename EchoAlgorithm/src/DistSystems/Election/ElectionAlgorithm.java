@@ -16,7 +16,8 @@ import java.util.concurrent.CyclicBarrier;
 public class ElectionAlgorithm {
 
     public static void main(String[] args) {
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 100; i++) {
+            System.out.println("@@@Round: " + i);
             ElectionAlgorithm electionAlgorithm = new ElectionAlgorithm();
             electionAlgorithm.start();
         }
@@ -26,11 +27,11 @@ public class ElectionAlgorithm {
 
         generateGraph();
 
-//        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(10, 3, 0.3);
+//        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(8, 2, 1);
 //        nodes = graphBuilder.build();
     }
 
-    protected List<ElectionNodeImp> nodes;
+    protected List<ElectionNodeStates> nodes;
 
     public void start() {
         printAllNodesNeighbours();
@@ -44,7 +45,7 @@ public class ElectionAlgorithm {
 
     private void joinAllNodes() {
         try {
-            for (ElectionNodeImp node : nodes) {
+            for (ElectionNodeStates node : nodes) {
                 node.join();
             }
         } catch (InterruptedException e) {
@@ -53,18 +54,18 @@ public class ElectionAlgorithm {
     }
 
     private void printAllNodesNeighbours() {
-        nodes.forEach(ElectionNodeImp::printNeighbours);
+        nodes.forEach(ElectionNodeStates::printNeighbours);
     }
 
     private void generateGraph() {
         CyclicBarrier cyclicBarrier = new CyclicBarrier(6);
         nodes = new LinkedList<>();
-        nodes.add(new ElectionNodeImp("0", 0, true, cyclicBarrier));
-        nodes.add(new ElectionNodeImp("1", 1, false, cyclicBarrier));
-        nodes.add(new ElectionNodeImp("2", 2, false, cyclicBarrier));
-        nodes.add(new ElectionNodeImp("3", 3, false, cyclicBarrier));
-        nodes.add(new ElectionNodeImp("4", 4, false, cyclicBarrier));
-        nodes.add(new ElectionNodeImp("5", 5, true, cyclicBarrier));
+        nodes.add(new ElectionNodeStates("0", 0, true, cyclicBarrier));
+        nodes.add(new ElectionNodeStates("1", 1, false, cyclicBarrier));
+        nodes.add(new ElectionNodeStates("2", 2, false, cyclicBarrier));
+        nodes.add(new ElectionNodeStates("3", 3, false, cyclicBarrier));
+        nodes.add(new ElectionNodeStates("4", 4, false, cyclicBarrier));
+        nodes.add(new ElectionNodeStates("5", 5, true, cyclicBarrier));
 
         nodes.get(0).setupNeighbours(nodes.get(1), nodes.get(2));
         nodes.get(1).setupNeighbours(nodes.get(2));

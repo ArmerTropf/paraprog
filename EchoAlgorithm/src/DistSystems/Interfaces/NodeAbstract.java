@@ -13,7 +13,7 @@ public abstract class NodeAbstract extends Thread implements Node {
 	protected final String name;
 
 	/** Is this node the initiator of the echo algorithm? */
-	protected final boolean initiator;
+	protected boolean initiator;
 
 	/**
 	 * Collection of known neighbours of this node; only the methods of the

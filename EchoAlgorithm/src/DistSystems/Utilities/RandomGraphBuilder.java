@@ -2,6 +2,7 @@ package DistSystems.Utilities;
 
 import DistSystems.Echo.EchoNode;
 import DistSystems.Election.ElectionNodeImp;
+import DistSystems.Election.ElectionNodeStates;
 import DistSystems.Interfaces.Node;
 import DistSystems.Interfaces.NodeAbstract;
 
@@ -16,7 +17,7 @@ import java.util.concurrent.CyclicBarrier;
  */
 public class RandomGraphBuilder {
 
-    private List<EchoNode> nodes;
+    private List<ElectionNodeStates> nodes;
     private CyclicBarrier helloBarrier;
 
     private int numberOfNodes;
@@ -34,7 +35,7 @@ public class RandomGraphBuilder {
         this.helloBarrier = new CyclicBarrier(numberOfNodes);
     }
 
-    public List<EchoNode> build() {
+    public List<ElectionNodeStates> build() {
         generateGraph();
         return nodes;
     }
@@ -46,8 +47,9 @@ public class RandomGraphBuilder {
 
     private void generateNodes() {
         for (int i = 0; i < numberOfNodes; i++) {
-            EchoNode node = new EchoNode(
+            ElectionNodeStates node = new ElectionNodeStates(
                     Integer.toString(i),
+                    i,
                     isNodeAnInitiator(),
                     helloBarrier);
             nodes.add(node);
