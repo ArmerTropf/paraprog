@@ -4,186 +4,203 @@ import DistSystems.Echo.EchoNode;
 import DistSystems.Interfaces.ElectionNode;
 
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CyclicBarrier;
 
 /**
- * Created by Hendrik Mahrt on 23.09.17.
+ * Election Node implementation.
+ * Perfoms the echo/election algorithm and determines the leader which perfoms the normal
+ * echo algorithm afterwards.
+ * Created by Michael Guenster, Andre Schriever, Hendrik Mahrt on 08.10.2017.
  */
 public class ElectionNodeImp extends EchoNode implements ElectionNode {
+    // states
+    private enum states {
+        ASLEEP,
+        EXPLORED,
+        SENT_EXPLORERS,
+        CONQUERED,
+        ALL_MESSAGES_RECEIVED,
+        VICTORY_MESSAGE_RECEIVED,
+        READY_FOR_ECHO
+    }
 
-    private final int nodeRank;
-    private int currentRank = 0;
-    private boolean explored = false;
-    private int numberOfExploreMessagesReceived = 0;
-    private ElectionNode neighbourExploredMe;
-    private int numberOfEchosReceived = 0;
-    private boolean leaderIsDetermined = false;
-    private ElectionNode leader = null;
-    private boolean conquered = false;
+    private int currentRank;
+    private ElectionNode exploredByNeighbour = null;
+    private ConcurrentHashMap<Integer, Integer> numberOfMessagesReceived = new ConcurrentHashMap<>();
+    private ElectionNode electedLeader = null;
+    private ElectionNode victoryByNeighbour = null;
+
+    private states state = states.ASLEEP;
 
     public ElectionNodeImp(String name, int rank, boolean initiator, CyclicBarrier barrier) {
-        super(name, initiator, barrier);
+        super(name, false, barrier);
         currentRank = rank;
-        nodeRank = rank;
+
+        // set state of initiator, so that he sends explorers right away
+        if (initiator)
+            state = states.EXPLORED;
     }
 
     @Override
     public void run() {
         try {
             sendHelloToAllNeighbours();
-            waitForOtherNodes();
-        
-            // if initiator: receive explore message from 'virtual' neighbour
-            if (initiator)
-                leaderExplore(null, this.currentRank);
-            
-            // wait for explore message incoming
-            if (hasExploreHappened())
-                // send explore message to all other neighbours
-                exploreNeighbours();
-            else
-                return; // stop thread when no explore happened
 
-            // wait for explore/echos from all neighbours
-            waitForAllExploresAndResendExplorersIfCaputured();
+            waitForExplorer();
 
-            if (!isThisNodeWinner())
-            sendLeaderEcho(); // send leaderecho
+            while (state != states.VICTORY_MESSAGE_RECEIVED) {
+                sendExplorers();
 
-            // if i am conquered: send a new echo to new neighbour. send explores to all other neighbours
+                if (state == states.EXPLORED)
+                    state = states.SENT_EXPLORERS;
 
-            waitForLeaderVictoryMessage();
+                while (!waitForAllMessages()) {
+                    sendExplorers();
+                    state = states.SENT_EXPLORERS;
+                }
 
-            sendVictoryMessage();
+                sendLeaderEcho();
 
-            // wait here for normal echo algorithm or being conquered -> send new echo and explorers
-            if (isThisNodeWinner())
-                System.out.println(this + " is winner. start normal echo"); // start normal echo here and obtain spanningtree
+                // we need to go back to wait for messages from here
+                waitForVictoryMessageOrBeingConquered();
+            }
 
-            // start echo with winner as only leader
+            sendVictoryMessages();
+            state = states.READY_FOR_ECHO;
 
-            // reset states. goto 0.
+            System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: finished. Waiting for echo!");
 
-        } catch (BrokenBarrierException | InterruptedException e) {
+            super.run();
+
+        } catch (InterruptedException | BrokenBarrierException e) {
             e.printStackTrace();
         }
     }
 
-    private synchronized void waitForLeaderVictoryMessage() throws InterruptedException {
-        while(!leaderIsDetermined) {
-            // if conquered -> send leaderEcho and explore messages
-
-            if (conquered)
-                resendExplorers();
-
-            if (isThisNodeWinner()) {
-                leader = this;
-                leaderIsDetermined = true;
-                return;
-            }
-
-            wait();
-        }
-    }
-
-    private void sendVictoryMessage() {
-        neighbours.parallelStream()
-                .filter(node -> !node.equals(neighbourExploredMe))
-                .forEach(node -> ((ElectionNode)node).leaderVictory(this, leader));
-    }
-
-    private void sendLeaderEcho() {
-        System.out.println(this + " sends leaderecho to " + neighbourExploredMe + " thread: " + currentThread().getName());
-        neighbourExploredMe.leaderEcho(this, this.currentRank);
-    }
-
-    private synchronized void waitForAllExploresAndResendExplorersIfCaputured() throws InterruptedException {
-        while(!receivedAMessageFromEveryNeighbour()) {
-            if (conquered)
-                resendExplorers();
-
+    private synchronized boolean waitForVictoryMessageOrBeingConquered() throws InterruptedException {
+        while (state != states.VICTORY_MESSAGE_RECEIVED && state != states.CONQUERED) {
             wait();
         }
 
-    }
-
-    private synchronized void resendExplorers() {
-        System.out.println(this + " was conquered and needs to resend explorers");
-        exploreNeighbours();
-        conquered = false;
-    }
-
-    private boolean receivedAMessageFromEveryNeighbour() {
-        int expectedNumberOfMessages = initiator ? neighbours.size() + 1 : neighbours.size();
-        return numberOfExploreMessagesReceived + numberOfEchosReceived == expectedNumberOfMessages;
-    }
-
-    private synchronized boolean hasExploreHappened() throws InterruptedException {
-        while(!explored) {
-            wait(1000);
-
-            if (!explored) {
-                System.out.println("explore timeout. " +
-                        "Assume missing connection to initiator. shutting down node: " + this);
-                return false;
-            }
+        if (state == states.VICTORY_MESSAGE_RECEIVED)
+            System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: received victory message");
+        else {
+            System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: conquered after leader echo");
+            return false;
         }
         return true;
     }
 
-    private void exploreNeighbours() {
-        neighbours.parallelStream()
-                .filter(node -> !node.equals(neighbourExploredMe))
-                .forEach(node -> ((ElectionNode)node).leaderExplore(this, this.currentRank));
+    private synchronized void sendLeaderEcho() {
+        if (exploredByNeighbour == null) {
+            System.out.println(this + "[" + state + " mesg:" + numberOfMessagesReceived + "/" + neighbours.size() + "]: im leader!");
+            electedLeader = this;
+            initiator = true;
+            state = states.VICTORY_MESSAGE_RECEIVED;
+            return;
+        }
+        System.out.println(this + "[" + state + " mesg:" + numberOfMessagesReceived + "/" + neighbours.size() + "]: sending leader echo");
+        if (state == states.ALL_MESSAGES_RECEIVED)
+        {
+            exploredByNeighbour.leaderEcho(this, this.currentRank);
+        }
     }
 
-    private boolean isThisNodeWinner() {
-        return nodeRank == currentRank;
+    private void sendVictoryMessages() {
+        System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: sending victory messages");
+        neighbours
+                .parallelStream()
+                .filter((neighbour) -> !neighbour.equals(victoryByNeighbour))
+                .forEach((neighbour) -> ((ElectionNode)neighbour).leaderWinner(this, electedLeader));
     }
 
-    /* ElectionNode interface implementation */
+    private synchronized boolean waitForAllMessages() throws InterruptedException {
+        while (!(numberOfMessagesReceived.get(currentRank) != null && numberOfMessagesReceived.get(currentRank) >= neighbours.size())) {
+
+            if (state == states.CONQUERED) {
+                System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: resending explorers after being conquered");
+                return false;
+            }
+            wait();
+        }
+        System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: received all messages");
+
+        if (state == states.CONQUERED) {
+            System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: resending explorers after being conquered");
+            return false;
+        }
+
+        state = states.ALL_MESSAGES_RECEIVED;
+        return true;
+    }
+
+    private void sendExplorers() {
+        // local copies of state information. Prevents sending of messages with newer rank.
+        int localCurrentRank = currentRank;
+        ElectionNode localExploredByNeighbour = exploredByNeighbour;
+        neighbours
+                .parallelStream()
+                .filter((neighbour) -> !neighbour.equals(localExploredByNeighbour))
+                .forEach((neighbour) -> ((ElectionNode)neighbour).leaderExplore(this, localCurrentRank));
+    }
+
+    private synchronized void waitForExplorer() throws InterruptedException {
+        while (state != states.EXPLORED) {
+            wait(1000);
+
+            if (state != states.EXPLORED) {
+                // not explored after timeout. lets be initiator ourself
+                state = states.EXPLORED;
+            }
+        }
+    }
 
     @Override
     public synchronized void leaderExplore(ElectionNode neighbour, int neighboursRank) {
 
-        if (!explored) {
-            System.out.println(this + " explored with currentRank: " + neighboursRank + ". neighbour: " + neighbour  + " number of messages received: " + numberOfExploreMessagesReceived + " thread: " + currentThread().getName());
-            explored = true;
-            ++numberOfExploreMessagesReceived;
-            neighbourExploredMe = neighbour;
-            currentRank = neighboursRank;
-        } else {
-            if (currentRank == neighboursRank) {
-                ++numberOfExploreMessagesReceived;
-                System.out.println(this + " already explored with currentRank: " + neighboursRank + ". neighbour: " + neighbour  + " number of messages received: " + numberOfExploreMessagesReceived + " thread: " + currentThread().getName());
-            } else if (currentRank < neighboursRank) {
-                // conquered
-                System.out.println(this + " conquered by " + neighbour + " currentRank: " + neighboursRank + " number of messages received: 1 thread: " + currentThread().getName());
-                neighbourExploredMe = neighbour;
+        if (state == states.ASLEEP) {
+            numberOfMessagesReceived.put(neighboursRank, 1);
+            System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: explored by " + neighbour + " rank: " + neighboursRank);
+            // if (currentRank < neighboursRank) { // commented out, because it caused more problems than it fixes
+                // this if statement is necessary for a higher node to participate in a leader election
+                // but it causes locks in other stages...
                 currentRank = neighboursRank;
-                numberOfExploreMessagesReceived = 1;
-                numberOfEchosReceived = 0;
-                conquered = true;
+                exploredByNeighbour = neighbour;
+            // }
+            state = states.EXPLORED;
+        } else {
+            if (currentRank < neighboursRank) {
+                numberOfMessagesReceived.put(neighboursRank, 1);
+                System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: conquered by " + neighbour + " rank: " + neighboursRank);
+                currentRank = neighboursRank;
+                exploredByNeighbour = neighbour;
+                state = states.CONQUERED;
+            } else if (currentRank == neighboursRank) {
+                numberOfMessagesReceived.put(neighboursRank, numberOfMessagesReceived.getOrDefault(neighboursRank, 0) + 1);
+                System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: explored by " + neighbour + " with same rank: " + neighboursRank);
             } else {
-                System.out.println(this + " explored by " + neighbour + " with lower currentRank " + neighboursRank  + " number of messages received: " + numberOfExploreMessagesReceived +". ignore!");
+                System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: explored by " + neighbour + " with lower rank: " + neighboursRank + ". ignoring!");
             }
         }
-
         notifyAll();
     }
 
     @Override
     public synchronized void leaderEcho(ElectionNode neighbour, int neighboursRank) {
-        ++numberOfEchosReceived;
-        System.out.println(this + " received leader echo by " + neighbour + " with rank " + neighboursRank  + ". number of echos received: " + numberOfEchosReceived);
+        if (neighboursRank == currentRank) {
+            numberOfMessagesReceived.put(neighboursRank, numberOfMessagesReceived.getOrDefault(neighboursRank, 0) + 1);
+            System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: got echo from " + neighbour + " with rank: " + neighboursRank);
+        }
         notifyAll();
     }
 
     @Override
-    public synchronized void leaderVictory(ElectionNode neighbour, ElectionNode victor) {
-        System.out.println(this + " received message that " + victor + " is leader");
-        leader = victor;
-        leaderIsDetermined = true;
+    public synchronized void leaderWinner(ElectionNode neighbour, ElectionNode winner) {
+        System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: got victory message from " + neighbour + " with leader: " + winner);
+        victoryByNeighbour = neighbour;
+        electedLeader = winner;
+        state = states.VICTORY_MESSAGE_RECEIVED;
         notifyAll();
     }
 }

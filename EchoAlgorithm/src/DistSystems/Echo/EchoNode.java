@@ -11,6 +11,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
 /**
+ * Echo node implementation.
  * Created by Michael Guenster, Andre Schriever, Hendrik Mahrt on 17.09.2017.
  */
 public class EchoNode extends NodeAbstract {
@@ -44,7 +45,6 @@ public class EchoNode extends NodeAbstract {
     public void run() {
         try {
             sendHelloToAllNeighbours();
-            waitForOtherNodes();
 
             if (initiator)
                 wakeup(null); // let initiator wakeup itself
@@ -52,7 +52,7 @@ public class EchoNode extends NodeAbstract {
             if (hasWakeupHappened())
                 wakeupNeighbours();
             else
-                return; // stop thread
+                return; // stop thread because no initiator in tree
 
             waitForAllMessages();
 
@@ -67,8 +67,13 @@ public class EchoNode extends NodeAbstract {
     }
 
     protected void sendHelloToAllNeighbours() throws BrokenBarrierException, InterruptedException {
+        // Get copy of neighbours to prevent modification of collection while iterating over
         Set<Node> initialNeighbours = getCopyOfNeighbours();
+
+        // send hello to all neighbours
         initialNeighbours.parallelStream().forEach((node -> node.hello(this)));
+
+        // wait for all neighbours to do the same
         waitForOtherNodes();
     }
 
@@ -81,14 +86,15 @@ public class EchoNode extends NodeAbstract {
         return neighboursCopy;
     }
 
-    protected void waitForOtherNodes() throws BrokenBarrierException, InterruptedException {
+    private void waitForOtherNodes() throws BrokenBarrierException, InterruptedException {
         barrier.await();
     }
 
-    protected synchronized boolean hasWakeupHappened() throws InterruptedException {
+    private synchronized boolean hasWakeupHappened() throws InterruptedException {
         while(sleeping) {
             wait(1000);
 
+            // if i am still sleeping, assume, i can not be reached. shut down.
             if (sleeping) {
                 System.out.println("wakeup timeout. " +
                         "Assume missing connection to initiator. shutting down node: " + this);
@@ -98,27 +104,30 @@ public class EchoNode extends NodeAbstract {
         return true;
     }
 
-    protected void wakeupNeighbours() {
+    private void wakeupNeighbours() {
+        // wake up all neighbours except the one who woke me up
         neighbours.parallelStream()
                 .filter(node -> !node.equals(neighbourAwakenMe))
                 .forEach(node -> node.wakeup(this));
     }
 
-    protected synchronized void waitForAllMessages() throws InterruptedException {
+    private synchronized void waitForAllMessages() throws InterruptedException {
         while(!receivedAMessageFromEveryNeighbour())
             wait();
     }
 
     private synchronized boolean receivedAMessageFromEveryNeighbour() {
+        // initiator needs an extra message, because he was woken up by a virtual neighbour
+        // which increased its counter anyway.
         int expectedNumberOfMessages = initiator ? neighbours.size() + 1 : neighbours.size();
         return numberOfMessagesReceived == expectedNumberOfMessages;
     }
 
-    protected void printTree() {
+    private void printTree() {
         System.out.println(spanningTreeNode.toString());
     }
 
-    protected void sendEcho() {
+    private void sendEcho() {
         System.out.println(this + " sends echo to " + neighbourAwakenMe + " thread: " + currentThread().getName());
         neighbourAwakenMe.echo(this, spanningTreeNode);
     }
@@ -146,7 +155,10 @@ public class EchoNode extends NodeAbstract {
             return;
         }
 
+        // remember neighbour who woke me up for echo
         neighbourAwakenMe = neighbour;
+
+        // change status to sleeping
         sleeping = false;
 
         notifyAll();
@@ -155,7 +167,10 @@ public class EchoNode extends NodeAbstract {
     @Override
     public synchronized void echo(Node neighbour, Object data) {
         ++numberOfMessagesReceived;
+
+        // add received spanningTreeNode as precursor into my own spanningTreeNode
         spanningTreeNode.addPrecursor((SpanningTreeNode) data);
+
         System.out.println(this + " received an echo from " + neighbour + " thread: " + currentThread().getName());
 
         notifyAll();

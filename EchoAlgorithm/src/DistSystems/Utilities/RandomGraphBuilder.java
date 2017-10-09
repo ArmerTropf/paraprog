@@ -1,23 +1,21 @@
 package DistSystems.Utilities;
 
-import DistSystems.Echo.EchoNode;
-import DistSystems.Election.ElectionNodeImp;
-import DistSystems.Election.ElectionNodeStates;
-import DistSystems.Interfaces.Node;
 import DistSystems.Interfaces.NodeAbstract;
 
+import java.lang.reflect.Type;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
 
 /**
- * Created by Hendrik Mahrt on 23.09.2017.
+ * Created by Michael Guenster, Andre Schriever, Hendrik Mahrt on 23.09.2017.
  *
  * Generates random graphs with configurable properties.
  */
 public class RandomGraphBuilder {
 
-    private List<ElectionNodeStates> nodes;
+    private final NodeFactory nodeFactory;
+    private List<NodeAbstract> nodes;
     private CyclicBarrier helloBarrier;
 
     private int numberOfNodes;
@@ -25,17 +23,48 @@ public class RandomGraphBuilder {
     private double density;
 
     private int numberOfInitiatorsCreated = 0;
+    private boolean allowSlings = false;
+    private boolean allowCircles = false;
 
-    public RandomGraphBuilder(int numberOfNodes, int numberOfInitiators, double density) {
+    public RandomGraphBuilder(Type nodeType, int numberOfNodes, int numberOfInitiators) {
         this.numberOfNodes = numberOfNodes;
         this.numberOfInitiators = numberOfInitiators;
-        this.density = density;
+        this.density = 0.5;
 
+        this.nodeFactory = new NodeFactory(nodeType);
         this.nodes = new LinkedList<>();
         this.helloBarrier = new CyclicBarrier(numberOfNodes);
     }
 
-    public List<ElectionNodeStates> build() {
+    /**
+     * Allows the occurrence of slings in the
+     * randomly generated graph.
+     */
+    public void allowSlings() {
+        allowSlings = true;
+    }
+
+    /**
+     * Allows the occurrence of circles in the
+     * randomly generated graph.
+     */
+    public void allowCircles() {
+        allowCircles = true;
+    }
+
+    /**
+     * Generates a complete graph.
+     */
+    public void completeGraph() {
+        allowSlings = true;
+        density = 1;
+    }
+
+    /**
+     * Builds the random graph.
+     * @return List of nodes.
+     */
+    public List<NodeAbstract> build() {
         generateGraph();
         return nodes;
     }
@@ -47,9 +76,9 @@ public class RandomGraphBuilder {
 
     private void generateNodes() {
         for (int i = 0; i < numberOfNodes; i++) {
-            ElectionNodeStates node = new ElectionNodeStates(
-                    Integer.toString(i),
+            NodeAbstract node = nodeFactory.Create(
                     i,
+                    Integer.toString(i),
                     isNodeAnInitiator(),
                     helloBarrier);
             nodes.add(node);
@@ -57,18 +86,14 @@ public class RandomGraphBuilder {
     }
 
     private void generateNeighbourhood() {
-        // TODO: generate tree
-        // TODO: generate circle
-
+        // TODO: prevent circles if allowCircles == false
         for (NodeAbstract node : nodes) {
             LinkedList<NodeAbstract> neighbours = new LinkedList<>();
 
             for (NodeAbstract neighbour : nodes) {
-                // TODO: switch for slings
-                if (neighbour == node)
+                if (!allowSlings && neighbour == node)
                     continue;
 
-                // TODO: cross checking with neighbour: edge already existing?
                 if (Math.random() < density)
                     neighbours.add(neighbour);
             }
@@ -91,5 +116,9 @@ public class RandomGraphBuilder {
 
     private double chanceOfBecomingAnInitiator() {
         return (double) numberOfInitiators / (double) numberOfNodes;
+    }
+
+    public void setDensity(double density) {
+        this.density = density;
     }
 }
