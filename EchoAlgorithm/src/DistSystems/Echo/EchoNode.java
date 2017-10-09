@@ -11,7 +11,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
 /**
- * Created by Hendrik Mahrt on 17.09.2017.
+ * Created by Michael Guenster, Andre Schriever, Hendrik Mahrt on 17.09.2017.
  */
 public class EchoNode extends NodeAbstract {
 

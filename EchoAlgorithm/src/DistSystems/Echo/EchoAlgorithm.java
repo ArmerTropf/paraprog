@@ -8,7 +8,7 @@ import DistSystems.Utilities.RandomGraphBuilder;
 import java.util.List;
 
 /**
- * Created by Hendrik Mahrt on 17.09.2017.
+ * Created by Michael Guenster, Andre Schriever, Hendrik Mahrt on 17.09.2017.
  */
 public class EchoAlgorithm {
 

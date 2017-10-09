@@ -16,7 +16,7 @@ import java.util.concurrent.CyclicBarrier;
 public class ElectionAlgorithm {
 
     public static void main(String[] args) {
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             System.out.println("@@@Round: " + i);
             ElectionAlgorithm electionAlgorithm = new ElectionAlgorithm();
             electionAlgorithm.start();
@@ -27,8 +27,8 @@ public class ElectionAlgorithm {
 
         generateGraph();
 
-//        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(8, 2, 1);
-//        nodes = graphBuilder.build();
+        RandomGraphBuilder graphBuilder = new RandomGraphBuilder(8, 3, 0.2);
+        nodes = graphBuilder.build();
     }
 
     protected List<ElectionNodeStates> nodes;

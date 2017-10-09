@@ -3,13 +3,12 @@ package DistSystems.Election;
 import DistSystems.Echo.EchoNode;
 import DistSystems.Interfaces.ElectionNode;
 
-import java.util.HashMap;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CyclicBarrier;
 
 /**
- * Created by Hendrik Mahrt on 08.10.2017.
+ * Created by Michael Guenster, Andre Schriever, Hendrik Mahrt on 08.10.2017.
  */
 public class ElectionNodeStates extends EchoNode implements ElectionNode {
 
@@ -67,7 +66,7 @@ public class ElectionNodeStates extends EchoNode implements ElectionNode {
 
             System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: finished. Waiting for echo!");
 
-            //super.run();
+//            super.run();
 
         } catch (InterruptedException | BrokenBarrierException e) {
             e.printStackTrace();
@@ -88,7 +87,7 @@ public class ElectionNodeStates extends EchoNode implements ElectionNode {
         return true;
     }
 
-    private void sendLeaderEcho() {
+    private synchronized void sendLeaderEcho() {
         if (exploredByNeighbour == null) {
             System.out.println(this + "[" + state + " mesg:" + numberOfMessagesReceived + "/" + neighbours.size() + "]: im leader!");
             electedLeader = this;
@@ -97,7 +96,10 @@ public class ElectionNodeStates extends EchoNode implements ElectionNode {
             return;
         }
         System.out.println(this + "[" + state + " mesg:" + numberOfMessagesReceived + "/" + neighbours.size() + "]: sending leader echo");
-        exploredByNeighbour.leaderEcho(this, this.currentRank);
+        if (state == states.ALL_MESSAGES_RECEIVED)
+        {
+            exploredByNeighbour.leaderEcho(this, this.currentRank);
+        }
     }
 
     private void sendVictoryMessages() {
@@ -115,19 +117,26 @@ public class ElectionNodeStates extends EchoNode implements ElectionNode {
                 System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: resending explorers after being conquered");
                 return false;
             }
-
             wait();
         }
         System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: received all messages");
+
+        if (state == states.CONQUERED) {
+            System.out.println(this + "["+state+" mesg:"+numberOfMessagesReceived+"/"+neighbours.size()+"]: resending explorers after being conquered");
+            return false;
+        }
+
         state = states.ALL_MESSAGES_RECEIVED;
         return true;
     }
 
     private void sendExplorers() {
+        int localCurrentRank = currentRank;
+        ElectionNode localExploredByNeighbour = exploredByNeighbour;
         neighbours
                 .parallelStream()
-                .filter((neighbour) -> !neighbour.equals(exploredByNeighbour))
-                .forEach((neighbour) -> ((ElectionNode)neighbour).leaderExplore(this, currentRank));
+                .filter((neighbour) -> !neighbour.equals(localExploredByNeighbour))
+                .forEach((neighbour) -> ((ElectionNode)neighbour).leaderExplore(this, localCurrentRank));
     }
 
     private synchronized void waitForExplorer() throws InterruptedException {
